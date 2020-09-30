@@ -14,71 +14,49 @@ import br.edu.utfpr.dv.sireata.model.Campus;
 public class CampusDAO {
 	
 	public Campus buscarPorId(int id) throws SQLException{
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
 		
-		try{
-			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.prepareStatement("SELECT * FROM campus WHERE idCampus = ?");
+		try(Connection conn = ConnectionDAO.getInstance().getConnection()){
+			
+			PreparedStatement stmt = conn.prepareStatement("SELECT * FROM campus WHERE idCampus = ?");
 		
 			stmt.setInt(1, id);
 			
-			rs = stmt.executeQuery();
+			try(ResultSet rs = stmt.executeQuery()){
 			
-			if(rs.next()){
-				return this.carregarObjeto(rs);
-			}else{
-				return null;
+				if(rs.next()){
+					return this.carregarObjeto(rs);
+				}else{
+					return null;
+				}
 			}
-		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
 		}
 	}
 	
 	public Campus buscarPorDepartamento(int idDepartamento) throws SQLException{
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
 		
-		try{
-			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.prepareStatement("SELECT idCampus FROM departamentos WHERE idDepartamento=?");
+		try(Connection conn = ConnectionDAO.getInstance().getConnection()){
+
+			PreparedStatement stmt = conn.prepareStatement("SELECT idCampus FROM departamentos WHERE idDepartamento=?");
 		
 			stmt.setInt(1, idDepartamento);
 			
-			rs = stmt.executeQuery();
+			try(ResultSet rs = stmt.executeQuery()){
 			
-			if(rs.next()){
-				return this.buscarPorId(rs.getInt("idCampus"));
-			}else{
-				return null;
+				if(rs.next()){
+					return this.buscarPorId(rs.getInt("idCampus"));
+				}else{
+					return null;
+				}
 			}
-		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
 		}
 	}
 	
 	public List<Campus> listarTodos(boolean apenasAtivos) throws SQLException{
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet rs = null;
 		
-		try{
-			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.createStatement();
-		
-			rs = stmt.executeQuery("SELECT * FROM campus " + (apenasAtivos ? " WHERE ativo=1" : "") + " ORDER BY nome");
+		try(Connection conn = ConnectionDAO.getInstance().getConnection();
+			PreparedStatement stmt = conn.prepareStatement("SELECT * FROM campus " + (apenasAtivos ? " WHERE ativo=1" : "") + " ORDER BY nome");
+			ResultSet rs = stmt.executeQuery()){
+
 		
 			List<Campus> list = new ArrayList<Campus>();
 			
@@ -87,30 +65,20 @@ public class CampusDAO {
 			}
 			
 			return list;
-		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
 		}
 	}
 	
 	public List<Campus> listarParaCriacaoAta(int idUsuario) throws SQLException{
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet rs = null;
 		
-		try{
-			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.createStatement();
+		try(Connection conn = ConnectionDAO.getInstance().getConnection(); 
+
+			PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT campus.* FROM campus " +
+					"INNER JOIN departamentos ON departamentos.idCampus=campus.idCampus " +
+					"INNER JOIN orgaos ON orgaos.idDepartamento=departamentos.idDepartamento " +
+					"WHERE campus.ativo=1 AND (orgaos.idPresidente=" + String.valueOf(idUsuario) + " OR orgaos.idSecretario=" + String.valueOf(idUsuario) + 
+					") ORDER BY campus.nome");
 		
-			rs = stmt.executeQuery("SELECT DISTINCT campus.* FROM campus " +
-				"INNER JOIN departamentos ON departamentos.idCampus=campus.idCampus " +
-				"INNER JOIN orgaos ON orgaos.idDepartamento=departamentos.idDepartamento " +
-				"WHERE campus.ativo=1 AND (orgaos.idPresidente=" + String.valueOf(idUsuario) + " OR orgaos.idSecretario=" + String.valueOf(idUsuario) + 
-				") ORDER BY campus.nome");
+				ResultSet rs = stmt.executeQuery()){
 		
 			List<Campus> list = new ArrayList<Campus>();
 			
@@ -119,32 +87,22 @@ public class CampusDAO {
 			}
 			
 			return list;
-		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
 		}
 	}
 	
 	public List<Campus> listarParaConsultaAtas(int idUsuario) throws SQLException{
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet rs = null;
+
+		try(Connection conn = ConnectionDAO.getInstance().getConnection();
+				
+			PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT campus.* FROM campus " +
+					"INNER JOIN departamentos ON departamentos.idCampus=campus.idCampus " +
+					"INNER JOIN orgaos ON orgaos.idDepartamento=departamentos.idDepartamento " +
+					"INNER JOIN atas ON atas.idOrgao=orgaos.idOrgao " +
+					"INNER JOIN ataParticipantes ON ataParticipantes.idAta=atas.idAta " +
+					"WHERE atas.publicada=0 AND ataParticipantes.presente=1 AND ataParticipantes.idUsuario=" + String.valueOf(idUsuario) + 
+					" ORDER BY campus.nome");
 		
-		try{
-			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.createStatement();
-		
-			rs = stmt.executeQuery("SELECT DISTINCT campus.* FROM campus " +
-				"INNER JOIN departamentos ON departamentos.idCampus=campus.idCampus " +
-				"INNER JOIN orgaos ON orgaos.idDepartamento=departamentos.idDepartamento " +
-				"INNER JOIN atas ON atas.idOrgao=orgaos.idOrgao " +
-				"INNER JOIN ataParticipantes ON ataParticipantes.idAta=atas.idAta " +
-				"WHERE atas.publicada=0 AND ataParticipantes.presente=1 AND ataParticipantes.idUsuario=" + String.valueOf(idUsuario) + 
-				" ORDER BY campus.nome");
+			ResultSet rs = stmt.executeQuery()){
 		
 			List<Campus> list = new ArrayList<Campus>();
 			
@@ -153,13 +111,6 @@ public class CampusDAO {
 			}
 			
 			return list;
-		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
 		}
 	}
 	
